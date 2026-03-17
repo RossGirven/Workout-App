@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111827" />
+  <title>Workout Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Ross's training tracker</p>
+        <h1>Workout Tracker</h1>
+      </div>
+      <div class="topbar-actions">
+        <div id="authSummary" class="auth-summary pill">Cloud sync off</div>
+        <button id="installBtn" class="ghost-btn hidden" type="button">Install app</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab active" data-tab="tracker">Tracker</button>
+      <button class="tab" data-tab="plan">Plan</button>
+      <button class="tab" data-tab="run">Run</button>
+      <button class="tab" data-tab="strength">Strength</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+      <section id="tracker" class="tab-panel active">
+        <div class="card auth-card">
+          <div class="section-head stacked-mobile">
+            <div>
+              <h2>Cloud backup and sync</h2>
+              <p class="hint">Sign in with your email and the app will save your tracker to Supabase, so it syncs between devices and survives browser clearing. Magic, except it is just a database.</p>
+            </div>
+            <div class="inline-actions wrap">
+              <button id="syncNowBtn" class="ghost-btn" type="button">Sync now</button>
+              <button id="signOutBtn" class="ghost-btn hidden" type="button">Sign out</button>
+            </div>
+          </div>
+          <form id="authForm" class="form-grid">
+            <label class="full-width">
+              <span>Email</span>
+              <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
+            </label>
+            <button id="magicLinkBtn" class="primary-btn" type="submit">Email me a magic link</button>
+            <button id="loadCloudBtn" class="ghost-btn" type="button">Load cloud copy</button>
+          </form>
+          <div class="status-grid">
+            <div>
+              <p class="label">Signed in as</p>
+              <p id="signedInAs" class="status-value">Not signed in</p>
+            </div>
+            <div>
+              <p class="label">Local cache</p>
+              <p id="localStatus" class="status-value">Ready</p>
+            </div>
+            <div>
+              <p class="label">Cloud status</p>
+              <p id="cloudStatus" class="status-value">Disabled</p>
+            </div>
+            <div>
+              <p class="label">Last sync</p>
+              <p id="lastSync" class="status-value">Never</p>
+            </div>
+          </div>
+          <p class="hint" id="authHint">Until you add your Supabase keys in config.js, this stays local only. Static sites do not grow a backend by positive thinking.</p>
+        </div>
+
+        <div class="card summary-grid">
+          <div>
+            <p class="label">Total workouts</p>
+            <p id="totalWorkouts" class="metric">0</p>
+          </div>
+          <div>
+            <p class="label">Runs logged</p>
+            <p id="totalRuns" class="metric">0</p>
+          </div>
+          <div>
+            <p class="label">Distance</p>
+            <p id="totalDistance" class="metric">0 km</p>
+          </div>
+          <div>
+            <p class="label">This week</p>
+            <p id="thisWeek" class="metric">0</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <h2>Quick add workout</h2>
+            <button class="ghost-btn" id="clearQuickAdd" type="button">Clear</button>
+          </div>
+          <form id="quickAddForm" class="form-grid">
+            <label>
+              <span>Date</span>
+              <input type="date" id="quickDate" required />
+            </label>
+            <label>
+              <span>Workout type</span>
+              <select id="quickType" required>
+                <option value="">Choose one</option>
+                <option>Run</option>
+                <option>Workout A</option>
+                <option>Workout B</option>
+                <option>Upper</option>
+                <option>Lower</option>
+                <option>Cycle</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label>
+              <span>Distance (km)</span>
+              <input type="number" id="quickDistance" min="0" step="0.01" placeholder="Optional" />
+            </label>
+            <label>
+              <span>Duration</span>
+              <input type="time" id="quickDuration" step="1" />
+            </label>
+            <label class="full-width">
+              <span>Notes</span>
+              <input type="text" id="quickNotes" maxlength="120" placeholder="Optional note" />
+            </label>
+            <button class="primary-btn full-width" type="submit">Add to tracker</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <h2>Workout history</h2>
+            <div class="inline-actions wrap">
+              <select id="historyFilter">
+                <option value="all">All</option>
+                <option value="Run">Runs</option>
+                <option value="strength">Strength only</option>
+              </select>
+              <button id="importBtn" class="ghost-btn" type="button">Import JSON</button>
+              <button id="exportBtn" class="ghost-btn" type="button">Export JSON</button>
+              <input id="importFile" type="file" accept="application/json" hidden />
+            </div>
+          </div>
+          <div id="historyEmpty" class="empty-state">No workouts logged yet. Shocking, but reversible.</div>
+          <div id="historyList" class="history-list"></div>
+        </div>
+      </section>
+
+      <section id="plan" class="tab-panel">
+        <div class="card">
+          <div class="section-head">
+            <h2>Weekly training plan</h2>
+            <p class="hint">Your base week, preserved here so it does not vanish into spreadsheet folklore.</p>
+          </div>
+          <div id="weeklyPlan" class="plan-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <h2>Strength routine reference</h2>
+            <p class="hint">Sets, reps, start weights, muscles, the usual catalogue of suffering.</p>
+          </div>
+          <div id="routineReference" class="routine-reference"></div>
+        </div>
+      </section>
+
+      <section id="run" class="tab-panel">
+        <div class="card">
+          <div class="section-head">
+            <h2>Log a run</h2>
+            <p class="hint">Distance and time go in. Pace comes out. Humanity reinvents arithmetic daily.</p>
+          </div>
+          <form id="runForm" class="form-grid">
+            <label>
+              <span>Date</span>
+              <input type="date" id="runDate" required />
+            </label>
+            <label>
+              <span>Distance (km)</span>
+              <input type="number" id="runDistance" min="0.01" step="0.01" required />
+            </label>
+            <label>
+              <span>Duration</span>
+              <input type="time" id="runDuration" step="1" required />
+            </label>
+            <label>
+              <span>Pace</span>
+              <input type="text" id="runPace" readonly placeholder="Calculated automatically" />
+            </label>
+            <label class="full-width">
+              <span>Notes</span>
+              <input type="text" id="runNotes" maxlength="120" placeholder="Easy, tempo, intervals, race, etc." />
+            </label>
+            <button class="primary-btn full-width" type="submit">Save run</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="strength" class="tab-panel">
+        <div class="card">
+          <div class="section-head stacked-mobile">
+            <div>
+              <h2>Strength workouts</h2>
+              <p class="hint">Choose a template, tick the exercises, then press complete.</p>
+            </div>
+            <select id="workoutSelector"></select>
+          </div>
+
+          <div class="strength-meta">
+            <label>
+              <span>Date</span>
+              <input type="date" id="strengthDate" />
+            </label>
+            <label>
+              <span>Notes</span>
+              <input type="text" id="strengthNotes" maxlength="120" placeholder="Optional note" />
+            </label>
+          </div>
+
+          <div class="card inset-card">
+            <div class="section-head">
+              <h3>Routine reference</h3>
+              <p class="hint">The selected workout shown in full so you are not guessing mid-session.</p>
+            </div>
+            <div id="selectedRoutineReference" class="selected-routine-reference"></div>
+          </div>
+
+          <div id="strengthChecklist" class="checklist"></div>
+
+          <div class="strength-footer">
+            <div>
+              <p class="label">Completed</p>
+              <p id="strengthProgress" class="metric small">0 / 0</p>
+            </div>
+            <div class="strength-actions">
+              <button class="ghost-btn" id="resetWorkoutBtn" type="button">Reset ticks</button>
+              <button class="primary-btn" id="completeWorkoutBtn" type="button">Complete workout</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings" class="tab-panel">
+        <div class="card">
+          <div class="section-head">
+            <h2>Workout templates</h2>
+            <button class="ghost-btn" id="resetTemplatesBtn" type="button">Restore defaults</button>
+          </div>
+          <p class="hint">Edit the exercise names for each workout. Handy, because plans change and knees file complaints.</p>
+          <div id="templateEditor" class="template-editor"></div>
+          <button class="primary-btn" id="saveTemplatesBtn" type="button">Save template changes</button>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <h2>Cloud setup</h2>
+          </div>
+          <ol class="hint setup-list">
+            <li>Create a Supabase project.</li>
+            <li>Run the SQL in <code>supabase-setup.sql</code>.</li>
+            <li>Copy <code>config.example.js</code> to <code>config.js</code> and paste your project URL and anon key.</li>
+            <li>Upload the whole folder to GitHub Pages.</li>
+            <li>Use the same email on each device so the cloud copy can be loaded anywhere.</li>
+          </ol>
+          <p class="hint">Use the anon key in the browser, never the service role key. Exposing that one would be a truly inspired disaster.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="historyItemTemplate">
+    <article class="history-item">
+      <div>
+        <p class="history-title"></p>
+        <p class="history-meta"></p>
+      </div>
+      <button class="danger-link" type="button">Delete</button>
+    </article>
+  </template>
+
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
