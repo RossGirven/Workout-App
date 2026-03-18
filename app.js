@@ -284,10 +284,10 @@ function renderStrengthSelector() {
 
 function renderStrengthChecklist() {
   const workoutName = state.currentStrength.selectedWorkout;
-  const exercises = state.templates[workoutName] ?? [];
+  const exercises = ROUTINE_REFERENCE[workoutName] ?? [];
   els.strengthChecklist.innerHTML = '';
 
-  exercises.forEach((exercise, index) => {
+  exercises.forEach((item, index) => {
     const id = `${workoutName}-${index}`;
     const wrapper = document.createElement('label');
     wrapper.className = 'check-item';
@@ -304,7 +304,7 @@ function renderStrengthChecklist() {
     });
 
     const text = document.createElement('span');
-    text.textContent = exercise;
+    text.textContent = item.exercise;
     wrapper.append(checkbox, text);
     els.strengthChecklist.appendChild(wrapper);
   });
@@ -669,7 +669,7 @@ els.strengthNotes.addEventListener('input', () => {
 
 els.resetWorkoutBtn.addEventListener('click', () => {
   const workoutName = state.currentStrength.selectedWorkout;
-  const exercises = state.templates[workoutName] ?? [];
+  const exercises = ROUTINE_REFERENCE[workoutName] ?? [];
   exercises.forEach((_, index) => { state.currentStrength.checks[`${workoutName}-${index}`] = false; });
   saveState();
   renderStrengthChecklist();
@@ -677,7 +677,7 @@ els.resetWorkoutBtn.addEventListener('click', () => {
 
 els.completeWorkoutBtn.addEventListener('click', () => {
   const workoutName = state.currentStrength.selectedWorkout;
-  const exercises = state.templates[workoutName] ?? [];
+  const exercises = ROUTINE_REFERENCE[workoutName] ?? [];
   const doneCount = exercises.filter((_, index) => state.currentStrength.checks[`${workoutName}-${index}`]).length;
 
   if (!els.strengthDate.value) {
