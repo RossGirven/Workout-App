@@ -11,12 +11,13 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
+*::before, *::after { box-sizing: border-box; }
 body {
   margin: 0;
   background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
   color: var(--text);
 }
-button, input, select { font: inherit; }
+button, input, select { font: inherit; min-width: 0; }
 .app-shell {
   max-width: 980px;
   margin: 0 auto;
@@ -100,6 +101,9 @@ h2 { font-size: 1.15rem; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+label {
+  min-width: 0;
+}
 label span {
   display: block;
   margin-bottom: 6px;
@@ -107,7 +111,9 @@ label span {
   font-size: 0.9rem;
 }
 input, select {
+  display: block;
   width: 100%;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px;
@@ -115,6 +121,29 @@ input, select {
   color: var(--text);
 }
 input[readonly] { color: #cbd5e1; }
+
+input[type="date"],
+input[type="time"],
+input[type="number"],
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select {
+  min-width: 0;
+}
+
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.form-grid > label,
+.strength-meta > label,
+.status-grid > div,
+.summary-grid > div {
+  min-width: 0;
+}
 .full-width { grid-column: 1 / -1; }
 .primary-btn {
   background: var(--accent);
@@ -383,7 +412,7 @@ code {
 }
 @media (max-width: 560px) {
   .app-shell { padding: 12px 12px 32px; }
-  .tabs { grid-template-columns: repeat(2, 1fr); }
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .summary-grid,
   .form-grid,
   .strength-meta,
@@ -396,6 +425,25 @@ code {
     flex-direction: column;
     align-items: stretch;
   }
-  .inline-actions, .strength-actions, .topbar-actions { flex-direction: column; }
+  .inline-actions, .strength-actions, .topbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tab, .ghost-btn, .primary-btn, .pill, .compact-btn,
+  input, select {
+    width: 100%;
+    max-width: 100%;
+  }
+  .history-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .modal { padding: 12px; }
+}
+
+@media (max-width: 400px) {
+  input, select, .tab, .ghost-btn, .primary-btn {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 }
