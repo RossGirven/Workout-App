@@ -260,6 +260,20 @@ function renderSummary() {
   els.thisWeek.textContent = thisWeekCount;
 }
 
+
+function getWorkoutNames() {
+  const referenceNames = Object.keys(ROUTINE_REFERENCE);
+  return referenceNames.length ? referenceNames : Object.keys(state.templates);
+}
+
+function getWorkoutExercises(workoutName) {
+  const referenceItems = ROUTINE_REFERENCE[workoutName];
+  if (Array.isArray(referenceItems) && referenceItems.length) {
+    return referenceItems.map(item => item.exercise);
+  }
+  return state.templates[workoutName] ?? [];
+}
+
 function renderHistory() {
   els.historyList.innerHTML = '';
   const filter = els.historyFilter.value;
@@ -294,7 +308,7 @@ function renderHistory() {
 }
 
 function renderStrengthSelector() {
-  const names = Object.keys(state.templates);
+  const names = getWorkoutNames();
   els.workoutSelector.innerHTML = names.map(name => `<option value="${name}">${name}</option>`).join('');
   if (!names.includes(state.currentStrength.selectedWorkout)) {
     state.currentStrength.selectedWorkout = names[0];
@@ -304,7 +318,7 @@ function renderStrengthSelector() {
 
 function renderStrengthChecklist() {
   const workoutName = state.currentStrength.selectedWorkout;
-  const exercises = state.templates[workoutName] ?? [];
+  const exercises = getWorkoutExercises(workoutName);
   els.strengthChecklist.innerHTML = '';
 
   exercises.forEach((exercise, index) => {
@@ -409,23 +423,29 @@ function renderSelectedRoutineReference() {
 }
 
 function renderTemplateEditor() {
-  els.templateEditor.innerHTML = '';
-  Object.entries(state.templates).forEach(([name, exercises]) => {
-    const card = document.createElement('div');
-    card.className = 'template-card';
-    card.innerHTML = `
-      <h3>${name}</h3>
-      <div class="template-list">
-        ${exercises.map((exercise, index) => `
-          <label>
-            <span>Exercise ${index + 1}</span>
-            <input type="text" data-workout="${name}" data-index="${index}" value="${escapeHtml(exercise)}" />
-          </label>
-        `).join('')}
+  const workoutNames = getWorkoutNames();
+  els.templateEditor.innerHTML = workoutNames.map(name => {
+    const items = ROUTINE_REFERENCE[name] ?? [];
+    const exercises = getWorkoutExercises(name);
+    const sourceLabel = items.length
+      ? 'Checklist items are pulled automatically from the routine reference on the Plan page.'
+      : 'No routine reference found for this workout yet.';
+
+    return `
+      <div class="template-card">
+        <h3>${escapeHtml(name)}</h3>
+        <p class="hint">${sourceLabel}</p>
+        <div class="template-list">
+          ${exercises.map((exercise, index) => `
+            <label>
+              <span>Exercise ${index + 1}</span>
+              <input type="text" value="${escapeHtml(exercise)}" readonly />
+            </label>
+          `).join('')}
+        </div>
       </div>
     `;
-    els.templateEditor.appendChild(card);
-  });
+  }).join('');
 }
 
 function escapeHtml(value) {
@@ -785,7 +805,7 @@ els.strengthNotes.addEventListener('input', () => {
 
 els.resetWorkoutBtn.addEventListener('click', () => {
   const workoutName = state.currentStrength.selectedWorkout;
-  const exercises = state.templates[workoutName] ?? [];
+  const exercises = getWorkoutExercises(workoutName);
   exercises.forEach((_, index) => { state.currentStrength.checks[`${workoutName}-${index}`] = false; });
   saveState();
   renderStrengthChecklist();
@@ -793,7 +813,7 @@ els.resetWorkoutBtn.addEventListener('click', () => {
 
 els.completeWorkoutBtn.addEventListener('click', () => {
   const workoutName = state.currentStrength.selectedWorkout;
-  const exercises = state.templates[workoutName] ?? [];
+  const exercises = getWorkoutExercises(workoutName);
   const doneCount = exercises.filter((_, index) => state.currentStrength.checks[`${workoutName}-${index}`]).length;
 
   if (!els.strengthDate.value) {
@@ -823,20 +843,11 @@ els.completeWorkoutBtn.addEventListener('click', () => {
 });
 
 els.saveTemplatesBtn.addEventListener('click', () => {
-  const updated = structuredClone(state.templates);
-  els.templateEditor.querySelectorAll('input[data-workout]').forEach(input => {
-    updated[input.dataset.workout][Number(input.dataset.index)] = input.value.trim() || 'Unnamed exercise';
-  });
-  state.templates = updated;
-  saveState();
-  renderAll();
-  alert('Templates saved. Miracles do happen.');
+  alert('The checklist now comes straight from the routine reference on the Plan page, so there is nothing separate to save here. One less pointless chore.');
 });
 
 els.resetTemplatesBtn.addEventListener('click', () => {
-  state.templates = structuredClone(DEFAULT_TEMPLATES);
-  saveState();
-  renderAll();
+  alert('The checklist is synced from the routine reference, so there is no separate template list to reset.');
 });
 
 els.historyFilter.addEventListener('change', renderHistory);
