@@ -51,6 +51,12 @@ const DEFAULT_TEMPLATES = {
   ]
 };
 
+const AUTH_MODES = {
+  SIGN_IN: 'sign-in',
+  SIGN_UP: 'sign-up',
+  RESET: 'reset'
+};
+
 const emptyState = () => ({
   workouts: [],
   templates: structuredClone(DEFAULT_TEMPLATES),
@@ -71,6 +77,7 @@ let deferredPrompt = null;
 let session = null;
 let syncTimer = null;
 let supabase = null;
+let authMode = AUTH_MODES.SIGN_IN;
 
 const els = {
   tabs: document.querySelectorAll('.tab'),
@@ -114,9 +121,22 @@ const els = {
   routineReference: document.getElementById('routineReference'),
   selectedRoutineReference: document.getElementById('selectedRoutineReference'),
   authSummary: document.getElementById('authSummary'),
+  authToggleBtn: document.getElementById('authToggleBtn'),
+  authModal: document.getElementById('authModal'),
+  authModalBackdrop: document.getElementById('authModalBackdrop'),
+  authCloseBtn: document.getElementById('authCloseBtn'),
   authForm: document.getElementById('authForm'),
   authEmail: document.getElementById('authEmail'),
-  magicLinkBtn: document.getElementById('magicLinkBtn'),
+  authPassword: document.getElementById('authPassword'),
+  authConfirmPassword: document.getElementById('authConfirmPassword'),
+  authPasswordWrap: document.getElementById('authPasswordWrap'),
+  authConfirmWrap: document.getElementById('authConfirmWrap'),
+  authModeSignIn: document.getElementById('authModeSignIn'),
+  authModeSignUp: document.getElementById('authModeSignUp'),
+  authModeReset: document.getElementById('authModeReset'),
+  authSubmitBtn: document.getElementById('authSubmitBtn'),
+  authModalText: document.getElementById('authModalText'),
+  authModalStatus: document.getElementById('authModalStatus'),
   loadCloudBtn: document.getElementById('loadCloudBtn'),
   syncNowBtn: document.getElementById('syncNowBtn'),
   signOutBtn: document.getElementById('signOutBtn'),
@@ -416,6 +436,57 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;');
 }
 
+function setAuthStatus(message = '', tone = '') {
+  els.authModalStatus.textContent = message;
+  els.authModalStatus.classList.remove('success', 'error');
+  if (tone) els.authModalStatus.classList.add(tone);
+}
+
+function openAuthModal(mode = authMode) {
+  authMode = mode;
+  renderAuthMode();
+  els.authModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  const fieldToFocus = authMode === AUTH_MODES.RESET || authMode === AUTH_MODES.SIGN_IN || authMode === AUTH_MODES.SIGN_UP
+    ? els.authEmail
+    : els.authPassword;
+  window.setTimeout(() => fieldToFocus.focus(), 20);
+}
+
+function closeAuthModal() {
+  els.authModal.classList.add('hidden');
+  document.body.style.overflow = '';
+  setAuthStatus('');
+}
+
+function renderAuthMode() {
+  const isSignIn = authMode === AUTH_MODES.SIGN_IN;
+  const isSignUp = authMode === AUTH_MODES.SIGN_UP;
+  const isReset = authMode === AUTH_MODES.RESET;
+
+  els.authModeSignIn.classList.toggle('active', isSignIn);
+  els.authModeSignUp.classList.toggle('active', isSignUp);
+  els.authModeReset.classList.toggle('active', isReset);
+  els.authPasswordWrap.classList.toggle('hidden', isReset);
+  els.authConfirmWrap.classList.toggle('hidden', !isSignUp);
+  els.authPassword.required = !isReset;
+  els.authConfirmPassword.required = isSignUp;
+  els.authPassword.autocomplete = isSignUp ? 'new-password' : 'current-password';
+
+  if (isSignIn) {
+    els.authSubmitBtn.textContent = 'Sign in';
+    els.authModalText.textContent = 'Use your email address and password. Revolutionary, I know.';
+  } else if (isSignUp) {
+    els.authSubmitBtn.textContent = 'Create account';
+    els.authModalText.textContent = 'Create an email-and-password login for cloud sync. No more magic-link faff.';
+  } else {
+    els.authSubmitBtn.textContent = 'Send reset email';
+    els.authModalText.textContent = 'This sends a password reset email. Because apparently humans enjoy proving they own inboxes.';
+  }
+
+  setAuthStatus('');
+}
+
 function renderAuthStatus() {
   const configured = isCloudConfigured();
   const email = session?.user?.email || '';
@@ -425,18 +496,21 @@ function renderAuthStatus() {
   els.authSummary.classList.toggle('success', cloudOn);
   els.authSummary.classList.toggle('warning', configured && !cloudOn);
   els.authSummary.classList.toggle('danger', !configured);
+
+  els.authToggleBtn.textContent = cloudOn ? 'Account' : 'Sign in';
+  els.authToggleBtn.disabled = !configured;
   els.signedInAs.textContent = email || 'Not signed in';
   els.cloudStatus.textContent = !configured ? 'Disabled' : cloudOn ? 'Connected' : 'Awaiting sign-in';
   els.lastSync.textContent = formatDateTime(state.meta?.lastSyncedAt || '');
   els.signOutBtn.classList.toggle('hidden', !cloudOn);
-  els.magicLinkBtn.disabled = !configured;
   els.loadCloudBtn.disabled = !configured || !cloudOn;
   els.syncNowBtn.disabled = !configured || !cloudOn;
+
   els.authHint.textContent = !configured
     ? 'Add your Supabase URL and anon key in config.js first. Until then this is local-only, like a diary with no backup.'
     : cloudOn
-      ? 'Signed in. Your changes save locally first, then sync to the cloud.'
-      : 'Cloud is configured. Sign in with the same email on each device to pull the same training data everywhere.';
+      ? 'Signed in. Changes save locally first, then sync to Supabase.'
+      : 'Cloud is configured. Sign in from the small button at the top to sync this tracker across devices.';
 }
 
 function renderAll() {
@@ -448,6 +522,7 @@ function renderAll() {
   renderSelectedRoutineReference();
   renderTemplateEditor();
   renderAuthStatus();
+  renderAuthMode();
   els.strengthDate.value = state.currentStrength.date || todayISO();
   els.strengthNotes.value = state.currentStrength.notes || '';
 }
@@ -484,11 +559,18 @@ async function initialiseCloud() {
   session = currentSession;
   renderAuthStatus();
 
-  supabase.auth.onAuthStateChange(async (_event, newSession) => {
+  supabase.auth.onAuthStateChange(async (event, newSession) => {
     session = newSession;
     renderAuthStatus();
-    if (session) {
+
+    if (event === 'SIGNED_IN' && session) {
+      setAuthStatus('Signed in. The machines remain barely coordinated.', 'success');
       await loadCloudState({ preferCloud: true });
+      closeAuthModal();
+    }
+
+    if (event === 'SIGNED_OUT') {
+      setAuthStatus('Signed out.', 'success');
     }
   });
 
@@ -497,19 +579,53 @@ async function initialiseCloud() {
   }
 }
 
-async function requestMagicLink(email) {
+async function signInWithPassword(email, password) {
   if (!supabase) return;
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${window.location.origin}${window.location.pathname}`
-    }
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    setAuthStatus(`Sign-in failed: ${error.message}`, 'error');
+    return false;
+  }
+  return true;
+}
+
+async function signUpWithPassword(email, password) {
+  if (!supabase) return;
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    setAuthStatus(`Sign-up failed: ${error.message}`, 'error');
+    return false;
+  }
+
+  const needsEmailConfirm = !data.session;
+  setAuthStatus(
+    needsEmailConfirm
+      ? 'Account created. Check your email to confirm the address, because nothing is ever allowed to be simple.'
+      : 'Account created and signed in.',
+    'success'
+  );
+
+  if (!needsEmailConfirm) {
+    session = data.session;
+    renderAuthStatus();
+    await loadCloudState({ preferCloud: true });
+    closeAuthModal();
+  }
+
+  return true;
+}
+
+async function sendPasswordReset(email) {
+  if (!supabase) return;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}${window.location.pathname}`
   });
   if (error) {
-    alert(`Magic link failed: ${error.message}`);
-    return;
+    setAuthStatus(`Reset failed: ${error.message}`, 'error');
+    return false;
   }
-  alert('Magic link sent. Open it on this device or any other one you want to sync. Modern life is basically email with extra steps.');
+  setAuthStatus('Password reset email sent.', 'success');
+  return true;
 }
 
 async function loadCloudState({ preferCloud = false } = {}) {
@@ -744,14 +860,81 @@ els.importFile.addEventListener('change', async () => {
   els.importFile.value = '';
 });
 
-els.authForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const email = els.authEmail.value.trim();
-  if (!email) {
-    alert('Enter your email first. Telepathy support is still delayed.');
+els.authToggleBtn.addEventListener('click', () => {
+  if (!isCloudConfigured()) {
+    setActiveTab('settings');
     return;
   }
-  await requestMagicLink(email);
+  openAuthModal(session ? AUTH_MODES.SIGN_IN : authMode);
+});
+
+els.authCloseBtn.addEventListener('click', closeAuthModal);
+els.authModalBackdrop.addEventListener('click', closeAuthModal);
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !els.authModal.classList.contains('hidden')) {
+    closeAuthModal();
+  }
+});
+
+els.authModeSignIn.addEventListener('click', () => {
+  authMode = AUTH_MODES.SIGN_IN;
+  renderAuthMode();
+});
+els.authModeSignUp.addEventListener('click', () => {
+  authMode = AUTH_MODES.SIGN_UP;
+  renderAuthMode();
+});
+els.authModeReset.addEventListener('click', () => {
+  authMode = AUTH_MODES.RESET;
+  renderAuthMode();
+});
+
+els.authForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  if (!isCloudConfigured()) {
+    setAuthStatus('Add your Supabase URL and anon key in config.js first.', 'error');
+    return;
+  }
+
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value;
+  const confirmPassword = els.authConfirmPassword.value;
+
+  if (!email) {
+    setAuthStatus('Enter your email first. Telepathy support is still delayed.', 'error');
+    return;
+  }
+
+  if (authMode !== AUTH_MODES.RESET && !password) {
+    setAuthStatus('Enter your password.', 'error');
+    return;
+  }
+
+  if (authMode === AUTH_MODES.SIGN_UP) {
+    if (password.length < 6) {
+      setAuthStatus('Use at least 6 characters for the password.', 'error');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthStatus('Passwords do not match. Classic sabotage.', 'error');
+      return;
+    }
+  }
+
+  setAuthStatus('Working...', 'success');
+
+  if (authMode === AUTH_MODES.SIGN_IN) {
+    await signInWithPassword(email, password);
+    return;
+  }
+
+  if (authMode === AUTH_MODES.SIGN_UP) {
+    await signUpWithPassword(email, password);
+    return;
+  }
+
+  await sendPasswordReset(email);
 });
 
 els.loadCloudBtn.addEventListener('click', async () => {

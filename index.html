@@ -18,6 +18,7 @@
       </div>
       <div class="topbar-actions">
         <div id="authSummary" class="auth-summary pill">Cloud sync off</div>
+        <button id="authToggleBtn" class="ghost-btn compact-btn" type="button" aria-haspopup="dialog" aria-controls="authModal">Sign in</button>
         <button id="installBtn" class="ghost-btn hidden" type="button">Install app</button>
       </div>
     </header>
@@ -32,46 +33,6 @@
 
     <main>
       <section id="tracker" class="tab-panel active">
-        <div class="card auth-card">
-          <div class="section-head stacked-mobile">
-            <div>
-              <h2>Cloud backup and sync</h2>
-              <p class="hint">Sign in with your email and the app will save your tracker to Supabase, so it syncs between devices and survives browser clearing. Magic, except it is just a database.</p>
-            </div>
-            <div class="inline-actions wrap">
-              <button id="syncNowBtn" class="ghost-btn" type="button">Sync now</button>
-              <button id="signOutBtn" class="ghost-btn hidden" type="button">Sign out</button>
-            </div>
-          </div>
-          <form id="authForm" class="form-grid">
-            <label class="full-width">
-              <span>Email</span>
-              <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
-            </label>
-            <button id="magicLinkBtn" class="primary-btn" type="submit">Email me a magic link</button>
-            <button id="loadCloudBtn" class="ghost-btn" type="button">Load cloud copy</button>
-          </form>
-          <div class="status-grid">
-            <div>
-              <p class="label">Signed in as</p>
-              <p id="signedInAs" class="status-value">Not signed in</p>
-            </div>
-            <div>
-              <p class="label">Local cache</p>
-              <p id="localStatus" class="status-value">Ready</p>
-            </div>
-            <div>
-              <p class="label">Cloud status</p>
-              <p id="cloudStatus" class="status-value">Disabled</p>
-            </div>
-            <div>
-              <p class="label">Last sync</p>
-              <p id="lastSync" class="status-value">Never</p>
-            </div>
-          </div>
-          <p class="hint" id="authHint">Until you add your Supabase keys in config.js, this stays local only. Static sites do not grow a backend by positive thinking.</p>
-        </div>
-
         <div class="card summary-grid">
           <div>
             <p class="label">Total workouts</p>
@@ -245,6 +206,38 @@
 
       <section id="settings" class="tab-panel">
         <div class="card">
+          <div class="section-head stacked-mobile">
+            <div>
+              <h2>Cloud account</h2>
+              <p id="authHint" class="hint">Sign in with email and password to sync between devices without relying on magic links and browser luck.</p>
+            </div>
+            <div class="inline-actions wrap">
+              <button id="syncNowBtn" class="ghost-btn" type="button">Sync now</button>
+              <button id="loadCloudBtn" class="ghost-btn" type="button">Load cloud copy</button>
+              <button id="signOutBtn" class="ghost-btn hidden" type="button">Sign out</button>
+            </div>
+          </div>
+          <div class="status-grid">
+            <div>
+              <p class="label">Signed in as</p>
+              <p id="signedInAs" class="status-value">Not signed in</p>
+            </div>
+            <div>
+              <p class="label">Local cache</p>
+              <p id="localStatus" class="status-value">Ready</p>
+            </div>
+            <div>
+              <p class="label">Cloud status</p>
+              <p id="cloudStatus" class="status-value">Disabled</p>
+            </div>
+            <div>
+              <p class="label">Last sync</p>
+              <p id="lastSync" class="status-value">Never</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="section-head">
             <h2>Workout templates</h2>
             <button class="ghost-btn" id="resetTemplatesBtn" type="button">Restore defaults</button>
@@ -262,6 +255,7 @@
             <li>Create a Supabase project.</li>
             <li>Run the SQL in <code>supabase-setup.sql</code>.</li>
             <li>Copy <code>config.example.js</code> to <code>config.js</code> and paste your project URL and anon key.</li>
+            <li>In Supabase Auth, enable email sign-in with password.</li>
             <li>Upload the whole folder to GitHub Pages.</li>
             <li>Use the same email on each device so the cloud copy can be loaded anywhere.</li>
           </ol>
@@ -269,6 +263,44 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div id="authModalBackdrop" class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="section-head auth-modal-head">
+        <div>
+          <p class="eyebrow">Cloud sync</p>
+          <h2 id="authModalTitle">Account</h2>
+        </div>
+        <button id="authCloseBtn" class="ghost-btn icon-btn" type="button" aria-label="Close sign-in window">✕</button>
+      </div>
+
+      <div class="segmented-control" role="tablist" aria-label="Account actions">
+        <button id="authModeSignIn" class="segment-btn active" type="button">Sign in</button>
+        <button id="authModeSignUp" class="segment-btn" type="button">Create account</button>
+        <button id="authModeReset" class="segment-btn" type="button">Reset password</button>
+      </div>
+
+      <p id="authModalText" class="hint modal-copy">Use your email address and password. Revolutionary, I know.</p>
+
+      <form id="authForm" class="form-grid auth-form">
+        <label class="full-width">
+          <span>Email</span>
+          <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
+        </label>
+        <label id="authPasswordWrap" class="full-width">
+          <span>Password</span>
+          <input type="password" id="authPassword" placeholder="Enter password" autocomplete="current-password" />
+        </label>
+        <label id="authConfirmWrap" class="full-width hidden">
+          <span>Confirm password</span>
+          <input type="password" id="authConfirmPassword" placeholder="Repeat password" autocomplete="new-password" />
+        </label>
+        <button id="authSubmitBtn" class="primary-btn full-width" type="submit">Sign in</button>
+      </form>
+      <p id="authModalStatus" class="hint auth-status-line"></p>
+    </div>
   </div>
 
   <template id="historyItemTemplate">
